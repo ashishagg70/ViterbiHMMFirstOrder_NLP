@@ -21,11 +21,11 @@ def setupData(tagged_sents_training_data):
             word_count_dict[word] += 1
             word_tag_count_dictionary[(word, tag)] += 1
             tag_list.append(tag)
-        tag_bigrams=list(nltk.bigrams(tag_list))
-        #tag_bigrams = list(nltk.bigrams([tag for (word, tag) in training_data_tagged_words_set1]))
+        tag_bigrams = list(nltk.bigrams(tag_list))
+        # tag_bigrams = list(nltk.bigrams([tag for (word, tag) in training_data_tagged_words_set1]))
         for (pre_tag, post_tag) in tag_bigrams:
-            tag_tag_count_dictionary[(pre_tag, post_tag)]+=1
-        tag_count_dict['^']+=1
+            tag_tag_count_dictionary[(pre_tag, post_tag)] += 1
+        tag_count_dict['^'] += 1
 
 def buildObservationTable(unique_tag_set, unique_words):
     for tag in unique_tag_set:
@@ -60,7 +60,7 @@ def ViterbiHMMFirstOrder(a, b ):
             dp[i][j]=(max,prev)
     #print(dp)
 
-    #find the tag sequence in backtrack fashion
+    #find the tag sequence
     max, ind=float('-inf'),0
     tag_output_sequence = [None] * testStringLegth
     j = testStringLegth - 1
@@ -76,48 +76,51 @@ def ViterbiHMMFirstOrder(a, b ):
 
 
 
-#variable setup
 
-log_base=2
-fileIds = training_data.fileids()
+splitFile=100
+for test_iteration in range(5):
+    tests=test_iteration*100
+    testf=test_iteration*100+100
+    log_base=2
 
-fileIds_set1 = fileIds[:]
-#test_fileIds = fileIds[400:]
-training_data_tagged_words_set1 = training_data.tagged_words(fileids=fileIds_set1, tagset='universal')
-training_data_tagged_sents_set1=training_data.tagged_sents(fileids=fileIds_set1, tagset='universal')
-test_data_sents_set1=training_data.sents(fileids=fileIds_set1)
+    #variable setup
+    fileIds = training_data.fileids()
+    training_fileIds_set1 = fileIds[:tests]+fileIds[testf:]
+    test_fileIds_set1 = fileIds[tests:testf]
+    training_data_tagged_sents_set1=training_data.tagged_sents(fileids=training_fileIds_set1, tagset='universal')
+    test_data_sents_set1=training_data.sents(fileids=test_fileIds_set1)
+    expected_data_sents_set1=training_data.tagged_sents(fileids=test_fileIds_set1, tagset='universal')
 
-tag_count_dict=defaultdict(int);
-word_count_dict=defaultdict(int);
-word_tag_count_dictionary=defaultdict(int);
-tag_tag_count_dictionary=defaultdict(int);
-observation_table=defaultdict(int);
-transition_table=defaultdict(int);
-
-
-#call to function to train data and extract useful info
-setupData(training_data_tagged_sents_set1[:30000])
-unique_tag_set_list=list(tag_count_dict.keys())
-unique_word_set_list=list(word_count_dict.keys())
-unique_tag_set_list.insert(0,'^')
-
-#build observation and tranistion tables
-buildObservationTable(unique_tag_set_list, unique_word_set_list)
-buildTransitionTable(unique_tag_set_list)
+    tag_count_dict=defaultdict(int);
+    word_count_dict=defaultdict(int);
+    word_tag_count_dictionary=defaultdict(int);
+    tag_tag_count_dictionary=defaultdict(int);
+    observation_table=defaultdict(int);
+    transition_table=defaultdict(int);
 
 
-#execute 
-correct_tag_count=0
-total_tag_count=0
-for ind, test_sents in enumerate(test_data_sents_set1[40000:50000]):
-    ind=ind+40000
-    #print(test_sents)
-    expected_tag_seq=[tag for (word,tag) in training_data_tagged_sents_set1[ind]]
-    #print(expected_tag_seq)
-    output_tag_seq=ViterbiHMMFirstOrder(test_sents,unique_tag_set_list)
-    #print(output_tag_seq)
-    for i in range(len(expected_tag_seq)):
-        if(expected_tag_seq[i]==output_tag_seq[i]):
-            correct_tag_count+=1
-        total_tag_count+=1
-print("accuracy: %d"%(correct_tag_count*100.0/total_tag_count))
+    #extract useful information from corpus
+    setupData(training_data_tagged_sents_set1)
+    unique_tag_set_list=list(tag_count_dict.keys())
+    unique_word_set_list=list(word_count_dict.keys())
+    unique_tag_set_list.insert(0,'^')
+
+    #build observation table and transition table
+    buildObservationTable(unique_tag_set_list, unique_word_set_list)
+    buildTransitionTable(unique_tag_set_list)
+
+
+    #execute viterbi and calculate percentage of accuracy
+    correct_tag_count=0
+    total_tag_count=0
+    for ind, test_sents in enumerate(test_data_sents_set1):
+        #print(test_sents)
+        expected_tag_seq=[tag for (word,tag) in expected_data_sents_set1[ind]]
+        #print(expected_tag_seq)
+        output_tag_seq=ViterbiHMMFirstOrder(test_sents,unique_tag_set_list)
+        #print(output_tag_seq)
+        for i in range(len(expected_tag_seq)):
+            if(expected_tag_seq[i]==output_tag_seq[i]):
+                correct_tag_count+=1
+            total_tag_count+=1
+    print("accuracy in iteration%d: %d%c"%(test_iteration+1,(correct_tag_count*100.0/total_tag_count),37))
