@@ -17,6 +17,7 @@ from FirstOrderHMMViterbi import Viterbi
 expected_predicted_dict=defaultdict(int);
 confusion_matrix=defaultdict(int);
 unique_tag_set_list=Viterbi.unique_tags_list
+tag_set_length=len(unique_tag_set_list)
 splitFile=100
 for test_iteration in range(5):
     tests=test_iteration*100
@@ -43,16 +44,30 @@ for test_iteration in range(5):
     print("accuracy in iteration%d: %d%c"%(test_iteration+1,(correct_tag_count*100.0/total_tag_count),37))
 
 #calculate confusion matrix
-tag_set_length=len(unique_tag_set_list)
 confusion_matrix=[[0]*(tag_set_length+1) for _ in range(tag_set_length+1)]
-#rows actual tag
-#columns are predicted tags
+per_tag_accuracy_matrix=[[0]*(tag_set_length+1) for _ in range(2)]
+tag_index_dict=defaultdict(int)
+for index, tag in enumerate(unique_tag_set_list):
+    tag_index_dict[tag]=index
+#rows actual tag #columns are predicted tags
 confusion_matrix[0][0]='actual tag on rows'
+per_tag_accuracy_matrix[0][0]='Tag'
+per_tag_accuracy_matrix[1][0]='Accuracy'
 for i in range(1,tag_set_length+1):
-    for j in range(1,tag_set_length+1):
-        if (unique_tag_set_list[i-1],unique_tag_set_list[j-1])  in expected_predicted_dict:
-            confusion_matrix[i][j]+=1
     confusion_matrix[i][0]=unique_tag_set_list[i-1]
     confusion_matrix[0][i]=unique_tag_set_list[i-1]
-print(tabulate(confusion_matrix, tablefmt="fancy_grid"))
+    per_tag_accuracy_matrix[0][i]=unique_tag_set_list[i-1]
 
+for (actual_tag, predicted_tag), value in expected_predicted_dict.items():
+    confusion_matrix[tag_index_dict[actual_tag]+1][tag_index_dict[predicted_tag]+1]+=value
+
+#per tag accuracy calculation
+
+for i in range(1,tag_set_length+1):
+    sum=0
+    for j in range(1,tag_set_length+1):
+        sum+=confusion_matrix[i][j]
+    per_tag_accuracy_matrix[1][i]=format(confusion_matrix[i][i]/sum*1.0,'.4f')
+
+print(tabulate(confusion_matrix, tablefmt="fancy_grid"))
+print(tabulate(per_tag_accuracy_matrix, tablefmt="fancy_grid"))
